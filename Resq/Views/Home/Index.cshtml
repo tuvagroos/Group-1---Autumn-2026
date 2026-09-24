@@ -1,53 +1,84 @@
 ﻿@{
     ViewData["Title"] = "Home Page";
+    ViewData["FullWidth"] = true;
 }
+
+<!-- Hovedområdet fyller tilgjengelig plass. På mobil er kartet hovedflaten. -->
 <div class="main-layout">
 
-    <!-- Område designert for annet, f.eks. skjema -->
-    <aside class="side-panel">
-        <p class="placeholder-text">Skjema</p>
+    <!-- Sidepanel: her legger man senere inn skjema, filtre og informasjon. -->
+    <aside id="side-panel" class="side-panel" aria-label="Form and map information">
+        <div class="side-panel-header">
+            <div>
+                <p class="section-label">Map tools</p>
+                <h1>New incident</h1>
+            </div>
+            <!-- På mobil skjules panelet for å gi kartet mest mulig plass. -->
+            <button class="panel-toggle panel-close" type="button" aria-controls="side-panel" aria-expanded="false">
+                <span class="visually-hidden">Close side panel</span>
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+
+        <!-- Plassholder for fremtidig innhold: skjemaet skal hjelpe brukeren å registrere hendelsen. -->
+        <div class="placeholder-text">
+            <strong>Form coming soon</strong>
+            <p>Select a position on the map. You can then add details about the incident.</p>
+        </div>
     </aside>
 
-    <!-- Område designert kart (2/3) -->
-    <section class="map-area">
-        <div id="map"></div>
+    <!-- Kartområde: kartet tar mest plass og er hovedinnholdet på små skjermer. -->
+    <section class="map-area" aria-label="Map">
+        <div id="map" role="application" aria-label="Interactive map"></div>
+        <p id="map-status" class="map-status" role="status" aria-live="polite">Loading map ...</p>
     </section>
 
 </div>
 
 <script>
-    var map = L.map('map').setView([58.4614, 8.7683], 13); // Fallback mens vi venter
-    // Funksjon for å kjøre leaflet script for å hente kart
+    // Kartet starter med en fast posisjon dersom nettleseren ikke gir oss brukerens posisjon.
+    const map = L.map('map').setView([58.4614, 8.7683], 13);
+    window.resqMap = map;
+
+    // Leaflet-laget henter kartbildet fra OpenStreetMap og legger det på kartet.
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    if (navigator.geolocation) //Henter koordinater for kart
-    {navigator.geolocation.getCurrentPosition(function (position) {
-            var lat = position.coords.latitude;
-            var lng = position.coords.longitude;
+    const mapStatus = document.getElementById('map-status');
+    mapStatus.textContent = 'The map is ready. Select a position or use your current location.';
 
-            map.setView([lat, lng], 13); // Melding til bruker avhengig av om det gikk å hente lokasjon eller ikke
-            L.marker([lat, lng]).addTo(map).bindPopup('Du er her').openPopup();
+    // Vi spør bare etter posisjon dersom nettleseren støtter geolokasjon.
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function (position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+
+            map.setView([latitude, longitude], 13);
+            L.marker([latitude, longitude]).addTo(map).bindPopup('You are here').openPopup();
+            mapStatus.textContent = 'The map is showing your current location.';
         }, function (error) {
             console.log('Klarte ikke hente posisjon:', error.message);
+            mapStatus.textContent = 'Your location could not be found. You can still select a position on the map.';
         });
     } else {
         console.log('Nettleseren støtter ikke geolokasjon');
+        mapStatus.textContent = 'This browser does not support geolocation. Select a position on the map.';
     }
 
-    var valgtMarkør = null; // Markør holder seg der den skal
+    // Vi lagrer den siste valgte markøren slik at den kan fjernes før et nytt valg vises.
+    let selectedMarker = null;
 
     map.on('click', function (e) {
-        var lat = e.latlng.lat;
-        var lng = e.latlng.lng;
+        const latitude = e.latlng.lat;
+        const longitude = e.latlng.lng;
 
-        if (valgtMarkør) {
-            map.removeLayer(valgtMarkør); // Fjern gammel markør så du ikke har flere markører samtidig
+        if (selectedMarker) {
+            map.removeLayer(selectedMarker);
         }
 
-        valgtMarkør = L.marker([lat, lng]).addTo(map)
-            .bindPopup('Valgt posisjon: ' + lat.toFixed(5) + ', ' + lng.toFixed(5))
+        selectedMarker = L.marker([latitude, longitude]).addTo(map)
+            .bindPopup('Selected position: ' + latitude.toFixed(5) + ', ' + longitude.toFixed(5))
             .openPopup();
     });
 </script>
